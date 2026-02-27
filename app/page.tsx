@@ -53,8 +53,8 @@ export default function LandingPage() {
               <Link href="/connect" className="btn btn-primary btn-lg">
                 Connect GitHub
               </Link>
-              <Link href="/report/ai-chatbot" className="btn btn-ghost btn-lg">
-                See a Sample Report
+              <Link href="#features" className="btn btn-ghost btn-lg">
+                Learn More
               </Link>
             </div>
 

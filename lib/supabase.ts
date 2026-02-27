@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /* ===== Database Types ===== */
 
@@ -14,7 +14,9 @@ export interface Finding {
     id: string;
     severity: "critical" | "high" | "medium" | "low";
     file: string;
-    line: number | null;
+    line: number;
+    endLine: number;
+    action: "replace" | "add" | "delete";
     title: string;
     description: string;
     fix: string;
@@ -31,20 +33,28 @@ export interface AnalysisRow {
     created_at: string;
 }
 
-/* ===== Supabase Client ===== */
+/* ===== Supabase Client (Lazy) ===== */
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let _supabase: SupabaseClient | null = null;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error(
-        "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variable"
-    );
+export function getSupabase(): SupabaseClient {
+    if (_supabase) return _supabase;
+
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+        throw new Error(
+            "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
+        );
+    }
+
+    _supabase = createClient(url, key, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+        },
+    });
+
+    return _supabase;
 }
-
-export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-    },
-});

@@ -45,21 +45,23 @@ export async function createFixPR(
         sha: latestCommitSha,
     });
 
-    // 4. Build tree entries for each finding with a fix
-    const fixableFindings = findings.filter((f) => f.fix && f.file);
+    // 4. Group actionable findings by file
+    const actionableFindings = findings.filter(
+        (f) => f.file && (f.action === "delete" || (f.fix && f.fix.trim()))
+    );
 
-    if (fixableFindings.length === 0) {
-        throw new Error("No fixable findings to apply");
+    if (actionableFindings.length === 0) {
+        throw new Error("No actionable findings to apply");
     }
 
-    // Group findings by file (multiple findings may target the same file)
-    const fileFixMap = new Map<string, string>();
-    for (const finding of fixableFindings) {
-        // Last fix for each file wins (in a real system, we'd merge fixes)
-        fileFixMap.set(finding.file, finding.fix);
+    const findingsByFile = new Map<string, Finding[]>();
+    for (const finding of actionableFindings) {
+        const existing = findingsByFile.get(finding.file) ?? [];
+        existing.push(finding);
+        findingsByFile.set(finding.file, existing);
     }
 
-    // Create blobs and tree entries
+    // 5. For each file: fetch original → apply patches → create blob
     const treeEntries: {
         path: string;
         mode: "100644";
@@ -67,12 +69,68 @@ export async function createFixPR(
         sha: string;
     }[] = [];
 
-    for (const [filePath, fixContent] of fileFixMap) {
-        // Create a new blob with the fixed content
+    for (const [filePath, fileFindings] of findingsByFile) {
+        // Fetch original file content
+        let originalContent: string;
+        try {
+            const { data } = await octokit.repos.getContent({
+                owner,
+                repo,
+                path: filePath,
+                ref: defaultBranch,
+            });
+            if (!("content" in data) || !data.content) continue;
+            originalContent = Buffer.from(data.content, "base64").toString("utf-8");
+        } catch {
+            continue; // Skip files that can't be fetched
+        }
+
+        // Apply patches (process from bottom to top to keep line numbers stable)
+        const lines = originalContent.split("\n");
+        const sortedFindings = [...fileFindings].sort(
+            (a, b) => b.line - a.line // Bottom-first
+        );
+
+        for (const finding of sortedFindings) {
+            const startIdx = finding.line - 1; // Convert to 0-indexed
+            const endIdx = finding.endLine - 1;
+
+            if (startIdx < 0 || startIdx >= lines.length) continue;
+
+            const fixLines = finding.fix ? finding.fix.split("\n") : [];
+
+            switch (finding.action) {
+                case "replace":
+                    // Replace lines [startIdx, endIdx] with fix content
+                    lines.splice(
+                        startIdx,
+                        Math.min(endIdx - startIdx + 1, lines.length - startIdx),
+                        ...fixLines
+                    );
+                    break;
+
+                case "add":
+                    // Insert fix content AFTER the specified line
+                    lines.splice(startIdx + 1, 0, ...fixLines);
+                    break;
+
+                case "delete":
+                    // Remove lines [startIdx, endIdx]
+                    lines.splice(
+                        startIdx,
+                        Math.min(endIdx - startIdx + 1, lines.length - startIdx)
+                    );
+                    break;
+            }
+        }
+
+        const patchedContent = lines.join("\n");
+
+        // Create blob with patched content
         const { data: blobData } = await octokit.git.createBlob({
             owner,
             repo,
-            content: fixContent,
+            content: patchedContent,
             encoding: "utf-8",
         });
 
@@ -84,7 +142,11 @@ export async function createFixPR(
         });
     }
 
-    // 5. Create a new tree
+    if (treeEntries.length === 0) {
+        throw new Error("No files were modified");
+    }
+
+    // 6. Create a new tree
     const { data: newTree } = await octokit.git.createTree({
         owner,
         repo,
@@ -92,7 +154,7 @@ export async function createFixPR(
         tree: treeEntries,
     });
 
-    // 6. Create a commit
+    // 7. Create a commit
     const { data: newCommit } = await octokit.git.createCommit({
         owner,
         repo,
@@ -101,7 +163,7 @@ export async function createFixPR(
         parents: [latestCommitSha],
     });
 
-    // 7. Update the branch ref to point to the new commit
+    // 8. Update the branch ref
     await octokit.git.updateRef({
         owner,
         repo,
@@ -109,10 +171,10 @@ export async function createFixPR(
         sha: newCommit.sha,
     });
 
-    // 8. Build PR body — markdown checklist grouped by severity
+    // 9. Build PR body
     const prBody = buildPRBody(findings);
 
-    // 9. Open the Pull Request
+    // 10. Open the Pull Request
     const { data: prData } = await octokit.pulls.create({
         owner,
         repo,
@@ -140,8 +202,14 @@ function buildPRBody(findings: Finding[]): string {
         low: "⚪",
     };
 
+    const ACTION_LABEL: Record<string, string> = {
+        replace: "Modified",
+        add: "Added",
+        delete: "Removed",
+    };
+
     let body = `## 🔒 QuickPatch Automated Security Fixes\n\n`;
-    body += `This PR was automatically generated by [QuickPatch](https://quickpatch.dev) to address security vulnerabilities found in this repository.\n\n`;
+    body += `This PR was automatically generated by [QuickPatch](https://quickpatch.dev) to address security vulnerabilities.\n\n`;
 
     for (const severity of SEVERITY_ORDER) {
         const group = findings.filter((f) => f.severity === severity);
@@ -151,7 +219,8 @@ function buildPRBody(findings: Finding[]): string {
         body += `### ${emoji} ${severity.charAt(0).toUpperCase() + severity.slice(1)} (${group.length})\n\n`;
 
         for (const finding of group) {
-            body += `- [ ] **${finding.title}** — \`${finding.file}\`\n`;
+            const action = ACTION_LABEL[finding.action] ?? "Fixed";
+            body += `- [ ] **${finding.title}** — \`${finding.file}:${finding.line}\` (${action})\n`;
             if (finding.description) {
                 body += `  ${finding.description}\n`;
             }

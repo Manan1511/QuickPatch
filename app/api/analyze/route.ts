@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { analyzeRepo } from "@/lib/analyzer";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import type { AnalysisRow } from "@/lib/supabase";
 
 interface AnalyzeRequest {
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
         }
 
         // Upsert user record
-        await supabase
+        await getSupabase()
             .from("users")
             .upsert(
                 {
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         );
 
         // Save to database
-        const { data, error: dbError } = await supabase
+        const { data, error: dbError } = await getSupabase()
             .from("analyses")
             .insert({
                 user_id: session.user.id,

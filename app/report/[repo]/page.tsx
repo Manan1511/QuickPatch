@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Navbar from "../../components/Navbar";
 import styles from "./page.module.css";
 
-/* ===== Types & Constants ===== */
+/* ===== Types ===== */
 
 type Severity = "critical" | "high" | "medium" | "low";
 
@@ -14,148 +14,23 @@ interface Finding {
     id: string;
     severity: Severity;
     file: string;
-    issue: string;
-    oldCode: string;
-    newCode: string;
+    line: number;
+    endLine: number;
+    action: "replace" | "add" | "delete";
+    title: string;
+    description: string;
+    fix: string;
 }
 
-const SECURITY_SCORE = 34;
-const FILES_SCANNED = 47;
-
-const SEVERITY_COUNTS: Record<Severity, number> = {
-    critical: 3,
-    high: 5,
-    medium: 8,
-    low: 4,
-};
-
-const FINDINGS: Finding[] = [
-    {
-        id: "f1",
-        severity: "critical",
-        file: "src/api/auth.js",
-        issue: "No authentication middleware",
-        oldCode: `// No auth middleware applied
-app.get('/api/users', (req, res) => {
-  const users = db.query('SELECT * FROM users');
-  res.json(users);
-});`,
-        newCode: `import { requireAuth } from './middleware/auth';
-
-app.get('/api/users', requireAuth, (req, res) => {
-  const users = db.query('SELECT * FROM users');
-  res.json(users);
-});`,
-    },
-    {
-        id: "f2",
-        severity: "critical",
-        file: ".env.example",
-        issue: "Exposed database credentials",
-        oldCode: `DB_HOST=production-db.us-east-1.rds.amazonaws.com
-DB_PASSWORD=super_secret_pass_123
-API_KEY=sk-live-abc123def456`,
-        newCode: `DB_HOST=<your-db-host>
-DB_PASSWORD=<your-db-password>
-API_KEY=<your-api-key>`,
-    },
-    {
-        id: "f3",
-        severity: "critical",
-        file: "src/db/queries.js",
-        issue: "SQL injection vulnerability",
-        oldCode: `const getUser = (id) => {
-  return db.query(\`SELECT * FROM users 
-    WHERE id = '\${id}'\`);
-};`,
-        newCode: `const getUser = (id) => {
-  return db.query(
-    'SELECT * FROM users WHERE id = $1',
-    [id]
-  );
-};`,
-    },
-    {
-        id: "f4",
-        severity: "high",
-        file: "package.json",
-        issue: "Vulnerable dependency: lodash@4.17.15",
-        oldCode: `"lodash": "^4.17.15"`,
-        newCode: `"lodash": "^4.17.21"`,
-    },
-    {
-        id: "f5",
-        severity: "high",
-        file: "src/server.js",
-        issue: "Missing rate limiting",
-        oldCode: `const app = express();
-app.use(cors());
-app.use(express.json());`,
-        newCode: `import rateLimit from 'express-rate-limit';
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
-});
-
-const app = express();
-app.use(limiter);
-app.use(cors());
-app.use(express.json());`,
-    },
-    {
-        id: "f6",
-        severity: "high",
-        file: "src/api/cors.js",
-        issue: "Permissive CORS configuration",
-        oldCode: `app.use(cors({ origin: '*' }));`,
-        newCode: `app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(','),
-  credentials: true
-}));`,
-    },
-    {
-        id: "f7",
-        severity: "medium",
-        file: "src/routes/users.js",
-        issue: "Missing input validation",
-        oldCode: `router.post('/users', (req, res) => {
-  const { email, name } = req.body;
-  db.createUser(email, name);
-});`,
-        newCode: `import { z } from 'zod';
-
-const userSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1).max(100)
-});
-
-router.post('/users', (req, res) => {
-  const { email, name } = userSchema.parse(req.body);
-  db.createUser(email, name);
-});`,
-    },
-    {
-        id: "f8",
-        severity: "medium",
-        file: "src/middleware/error.js",
-        issue: "Verbose error messages in production",
-        oldCode: `app.use((err, req, res, next) => {
-  res.status(500).json({
-    error: err.message,
-    stack: err.stack
-  });
-});`,
-        newCode: `app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({
-    error: process.env.NODE_ENV === 'production'
-      ? 'Internal server error'
-      : err.message
-  });
-});`,
-    },
-];
+interface AnalysisData {
+    id: string;
+    score: number;
+    findings: Finding[];
+    repo_full_name: string;
+    created_at: string;
+    pr_url: string | null;
+    pr_number: number | null;
+}
 
 /* ===== Score Circle Component ===== */
 
@@ -211,23 +86,127 @@ function ScoreCircle({ score }: { score: number }) {
     );
 }
 
-/* ===== Page Component ===== */
+/* ===== Inner Page Component (uses useSearchParams) ===== */
 
-export default function ReportPage() {
+function ReportPageInner() {
     const params = useParams();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
     const repoName = (params.repo as string) || "repo";
-    const [expandedId, setExpandedId] = useState<string | null>("f1");
+    const analysisId = searchParams.get("analysisId");
+    const owner = searchParams.get("owner") ?? "";
+
+    const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [creatingPR, setCreatingPR] = useState(false);
+
+    const fetchAnalysis = useCallback(async () => {
+        if (!analysisId) {
+            setError("No analysis ID provided");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/reports");
+            if (!res.ok) throw new Error("Failed to fetch reports");
+            const reports: AnalysisData[] = await res.json();
+            const found = reports.find((r) => r.id === analysisId);
+            if (!found) {
+                setError("Analysis not found");
+            } else {
+                setAnalysis(found);
+                // Auto-expand first finding
+                if (found.findings.length > 0) {
+                    setExpandedId(found.findings[0].id);
+                }
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load analysis");
+        } finally {
+            setLoading(false);
+        }
+    }, [analysisId]);
+
+    useEffect(() => {
+        fetchAnalysis();
+    }, [fetchAnalysis]);
 
     const toggleExpand = (id: string) => {
         setExpandedId((prev) => (prev === id ? null : id));
     };
 
-    const totalCritical = SEVERITY_COUNTS.critical;
-    const totalHigh = SEVERITY_COUNTS.high;
+    const handleCreatePR = async () => {
+        if (!analysis || !owner) return;
+        setCreatingPR(true);
+        try {
+            const res = await fetch("/api/pr", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    owner,
+                    repo: repoName,
+                    analysisId: analysis.id,
+                }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || "Failed to create PR");
+            }
+
+            const data = await res.json();
+            router.push(
+                `/report/${repoName}/pr?prUrl=${encodeURIComponent(data.pr_url)}&prNumber=${data.pr_number}&analysisId=${analysis.id}&owner=${owner}`
+            );
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to create PR");
+            setCreatingPR(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <>
+                <Navbar variant="app" />
+                <div className={styles.wrapper}>
+                    <div className={`container ${styles.content}`} style={{ display: "flex", justifyContent: "center", paddingTop: "4rem" }}>
+                        <div className="skel skel-heading" style={{ width: 300 }} />
+                    </div>
+                </div>
+            </>
+        );
+    }
+
+    if (error || !analysis) {
+        return (
+            <>
+                <Navbar variant="app" />
+                <div className={styles.wrapper}>
+                    <div className={`container ${styles.content}`} style={{ textAlign: "center", paddingTop: "4rem" }}>
+                        <p style={{ color: "var(--error)" }}>{error || "Analysis not found"}</p>
+                        <Link href="/dashboard" className="btn btn-ghost" style={{ marginTop: "var(--space-md)" }}>
+                            Back to Dashboard
+                        </Link>
+                    </div>
+                </div>
+            </>
+        );
+    }
+
+    const severityCounts: Record<Severity, number> = { critical: 0, high: 0, medium: 0, low: 0 };
+    for (const f of analysis.findings) {
+        severityCounts[f.severity]++;
+    }
+
+    const filesScanned = new Set(analysis.findings.map((f) => f.file)).size;
 
     return (
         <>
-            <Navbar variant="app" username="manan-dev" />
+            <Navbar variant="app" />
 
             <div className={styles.wrapper}>
                 <div className={`container ${styles.content}`}>
@@ -239,44 +218,44 @@ export default function ReportPage() {
                                     Dashboard
                                 </Link>
                                 <span className={styles.breadcrumbSep}>→</span>
-                                <span>manan-dev/{repoName}</span>
+                                <span>{analysis.repo_full_name}</span>
                             </nav>
 
                             <h1 className={styles.pageTitle}>
-                                Security Report: <span className={styles.repoHighlight}>manan-dev/{repoName}</span>
+                                Security Report:{" "}
+                                <span className={styles.repoHighlight}>{analysis.repo_full_name}</span>
                             </h1>
 
                             <p className={styles.meta}>
-                                Analyzed 2m ago · {FILES_SCANNED} files scanned ·{" "}
-                                {totalCritical} critical issues
+                                Analyzed {new Date(analysis.created_at).toLocaleString()} ·{" "}
+                                {filesScanned} files with issues ·{" "}
+                                {severityCounts.critical} critical issues
                             </p>
                         </div>
 
-                        <Link
-                            href={`/report/${repoName}/pr`}
+                        <button
                             className="btn btn-primary btn-lg"
+                            onClick={handleCreatePR}
+                            disabled={creatingPR}
                         >
-                            Open Pull Request
-                        </Link>
+                            {creatingPR ? "Creating PR..." : "Open Pull Request"}
+                        </button>
                     </div>
+
+                    {error && (
+                        <div style={{ color: "var(--error)", marginBottom: "var(--space-md)", fontSize: "14px" }}>
+                            {error}
+                        </div>
+                    )}
 
                     {/* Score Section */}
                     <div className={styles.scoreSection}>
-                        <ScoreCircle score={SECURITY_SCORE} />
-
+                        <ScoreCircle score={analysis.score} />
                         <div className={styles.severityPills}>
-                            <span className="badge badge-critical">
-                                {SEVERITY_COUNTS.critical} Critical
-                            </span>
-                            <span className="badge badge-high">
-                                {SEVERITY_COUNTS.high} High
-                            </span>
-                            <span className="badge badge-medium">
-                                {SEVERITY_COUNTS.medium} Medium
-                            </span>
-                            <span className="badge badge-low">
-                                {SEVERITY_COUNTS.low} Low
-                            </span>
+                            <span className="badge badge-critical">{severityCounts.critical} Critical</span>
+                            <span className="badge badge-high">{severityCounts.high} High</span>
+                            <span className="badge badge-medium">{severityCounts.medium} Medium</span>
+                            <span className="badge badge-low">{severityCounts.low} Low</span>
                         </div>
                     </div>
 
@@ -291,7 +270,7 @@ export default function ReportPage() {
                             <span className={styles.colFix}>Fix</span>
                         </div>
 
-                        {FINDINGS.map((finding) => (
+                        {analysis.findings.map((finding) => (
                             <div key={finding.id} className={styles.findingRow}>
                                 <div
                                     className={styles.findingMain}
@@ -310,9 +289,9 @@ export default function ReportPage() {
                                         {finding.severity}
                                     </span>
                                     <span className={`${styles.colFile} ${styles.filePath}`}>
-                                        {finding.file}
+                                        {finding.file}:{finding.line}{finding.endLine !== finding.line ? `-${finding.endLine}` : ""}
                                     </span>
-                                    <span className={styles.colIssue}>{finding.issue}</span>
+                                    <span className={styles.colIssue}>{finding.title}</span>
                                     <span className={`${styles.colFix} ${styles.viewFix}`}>
                                         {expandedId === finding.id ? "Hide" : "View Fix"}
                                     </span>
@@ -326,7 +305,7 @@ export default function ReportPage() {
                                                 className={styles.copyBtn}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    navigator.clipboard.writeText(finding.newCode);
+                                                    navigator.clipboard.writeText(finding.fix);
                                                 }}
                                                 aria-label="Copy fix to clipboard"
                                             >
@@ -339,13 +318,17 @@ export default function ReportPage() {
                                         </div>
                                         <div className={styles.diffContent}>
                                             <div className={styles.diffOld}>
-                                                <div className={styles.diffLabel}>Before</div>
-                                                <pre>{finding.oldCode}</pre>
+                                                <div className={styles.diffLabel}>Issue</div>
+                                                <pre>{finding.description}</pre>
                                             </div>
-                                            <div className={styles.diffNew}>
-                                                <div className={styles.diffLabel}>After</div>
-                                                <pre>{finding.newCode}</pre>
-                                            </div>
+                                            {finding.fix && (
+                                                <div className={styles.diffNew}>
+                                                    <div className={styles.diffLabel}>
+                                                        {finding.action === "add" ? "Add after line" : finding.action === "delete" ? "Lines to remove" : "Replace with"} (L{finding.line}{finding.endLine !== finding.line ? `-${finding.endLine}` : ""})
+                                                    </div>
+                                                    <pre>{finding.fix}</pre>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -358,17 +341,37 @@ export default function ReportPage() {
                 <div className={styles.stickyBar}>
                     <div className={`container ${styles.stickyBarInner}`}>
                         <span className={styles.stickyText}>
-                            {totalCritical} Critical, {totalHigh} High issues found.
+                            {severityCounts.critical} Critical, {severityCounts.high} High issues found.
                         </span>
-                        <Link
-                            href={`/report/${repoName}/pr`}
+                        <button
                             className="btn btn-primary"
+                            onClick={handleCreatePR}
+                            disabled={creatingPR}
                         >
-                            Auto-fix all — Open Pull Request
-                        </Link>
+                            {creatingPR ? "Creating PR..." : "Auto-fix all — Open Pull Request"}
+                        </button>
                     </div>
                 </div>
             </div>
         </>
+    );
+}
+
+/* ===== Page Wrapper with Suspense ===== */
+
+export default function ReportPage() {
+    return (
+        <Suspense fallback={
+            <>
+                <Navbar variant="app" />
+                <div className={styles.wrapper}>
+                    <div className={`container ${styles.content}`} style={{ display: "flex", justifyContent: "center", paddingTop: "4rem" }}>
+                        <div className="skel skel-heading" style={{ width: 300 }} />
+                    </div>
+                </div>
+            </>
+        }>
+            <ReportPageInner />
+        </Suspense>
     );
 }

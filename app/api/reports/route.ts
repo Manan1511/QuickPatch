@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 
 export async function GET() {
     try {
@@ -13,7 +13,7 @@ export async function GET() {
             );
         }
 
-        const { data: analyses, error } = await supabase
+        const { data: analyses, error } = await getSupabase()
             .from("analyses")
             .select("*")
             .eq("user_id", session.user.id)

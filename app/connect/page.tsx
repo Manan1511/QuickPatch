@@ -1,11 +1,9 @@
-import Link from "next/link";
-import styles from "./page.module.css";
-import type { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-    title: "Connect GitHub — QuickPatch",
-    description: "Connect your GitHub account to start scanning your repositories.",
-};
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import styles from "./page.module.css";
 
 const CHECK_ICON = (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -34,6 +32,20 @@ const PERMISSIONS = [
 ];
 
 export default function ConnectPage() {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+
+    // If already authenticated, redirect to dashboard
+    useEffect(() => {
+        if (status === "authenticated") {
+            router.push("/dashboard");
+        }
+    }, [status, router]);
+
+    const handleSignIn = () => {
+        signIn("github", { callbackUrl: "/dashboard" });
+    };
+
     return (
         <div className={styles.wrapper}>
             <div className={`card ${styles.connectCard}`}>
@@ -55,13 +67,13 @@ export default function ConnectPage() {
                     ))}
                 </ul>
 
-                <Link
-                    href="/dashboard"
+                <button
+                    onClick={handleSignIn}
                     className={`btn btn-primary btn-lg btn-full ${styles.githubBtn}`}
                 >
                     {GITHUB_ICON}
                     <span>Continue with GitHub</span>
-                </Link>
+                </button>
 
                 <p className={styles.disclaimer}>We never store your source code.</p>
             </div>

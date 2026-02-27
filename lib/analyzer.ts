@@ -16,7 +16,52 @@ const FILE_PATTERNS = [
     /\.(yaml|yml)$/,
 ];
 
-const SYSTEM_INSTRUCTION = `You are a security auditor specializing in AI-generated code. Analyze the provided codebase and return ONLY a valid JSON object with this exact shape: { "score": number (0-100, lower is worse), "findings": [{ "id": string, "severity": "critical"|"high"|"medium"|"low", "file": string, "line": number|null, "title": string, "description": string, "fix": string (the complete corrected code for that file or snippet) }] }. Do not include markdown, explanation, or any text outside the JSON.`;
+const SYSTEM_INSTRUCTION = `You are a security auditor. Analyze the codebase and return a JSON object.
+
+IMPORTANT: Keep fixes minimal and targeted. Do NOT rewrite entire files.
+
+FALSE POSITIVE RULES — do NOT flag these:
+- Environment variable REFERENCES like process.env.*, import.meta.env.*, os.environ are CORRECT patterns. They are NOT exposed secrets. Only flag if an actual secret VALUE is hardcoded (e.g. "sk-abc123...").
+- Do NOT downgrade dependency versions in package.json unless there is a specific known CVE. A newer version is not a vulnerability.
+- Do NOT flag .env files that are in .gitignore. Only flag .env files that would be committed.
+- Do NOT flag code patterns that are merely "best practice" suggestions. Only flag actual exploitable vulnerabilities.
+- Do NOT replace API key loading code with null or empty strings. The code that loads keys from environment variables is the CORRECT pattern.
+
+WHAT TO ACTUALLY FLAG:
+- Hardcoded secrets, API keys, passwords (actual values, not env var references)
+- SQL injection vulnerabilities
+- XSS vulnerabilities
+- Missing authentication/authorization on sensitive endpoints
+- Insecure CORS configurations allowing any origin
+- Missing input validation/sanitization on user inputs
+- Insecure default configurations
+- Path traversal vulnerabilities
+- Command injection vulnerabilities
+
+Return this exact JSON shape:
+{
+  "score": number (0-100, higher = more secure),
+  "findings": [{
+    "id": string,
+    "severity": "critical" | "high" | "medium" | "low",
+    "file": string (exact file path as given),
+    "line": number (1-indexed start line of the vulnerable code),
+    "endLine": number (1-indexed end line of the vulnerable code),
+    "action": "replace" | "add" | "delete",
+    "title": string (short vulnerability name),
+    "description": string (explain the issue and the fix),
+    "fix": string (ONLY the replacement code snippet for lines line..endLine — raw code, no markdown, no prose)
+  }]
+}
+
+Rules for the "fix" field:
+- For "replace": "fix" is the code that replaces lines [line, endLine]. Keep it minimal — just the fixed lines.
+- For "add": "fix" is the code to INSERT AFTER the line number. "line" and "endLine" should be the same.
+- For "delete": "fix" should be an empty string "". The lines [line, endLine] will be removed.
+- NEVER put explanations or prose in "fix". Only raw code.
+- NEVER rewrite the entire file. Only include the changed lines.
+
+Return ONLY valid JSON, no markdown fences or extra text.`;
 
 /* ===== Types ===== */
 
@@ -64,7 +109,7 @@ export async function analyzeRepo(
         };
     }
 
-    // 3. Fetch file contents
+    // 3. Fetch file contents (with line numbers for context)
     const fileContents: { path: string; content: string }[] = [];
 
     for (const file of relevantFiles) {
@@ -78,12 +123,12 @@ export async function analyzeRepo(
 
             if ("content" in data && data.content) {
                 const decoded = Buffer.from(data.content, "base64").toString("utf-8");
-                const lines = decoded.split("\n");
-                const truncated = lines.slice(0, MAX_LINES_PER_FILE).join("\n");
-                fileContents.push({ path: file.path!, content: truncated });
+                const lines = decoded.split("\n").slice(0, MAX_LINES_PER_FILE);
+                // Add line numbers so the AI can reference them
+                const numbered = lines.map((line, i) => `${i + 1}: ${line}`).join("\n");
+                fileContents.push({ path: file.path!, content: numbered });
             }
         } catch {
-            // Skip files that can't be fetched (binary, too large, etc.)
             continue;
         }
     }
@@ -96,7 +141,7 @@ export async function analyzeRepo(
         )
         .join("\n\n");
 
-    // 5. Call Gemini 2.5 Pro
+    // 5. Call Gemini
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         throw new Error("Missing GEMINI_API_KEY environment variable");
@@ -104,7 +149,7 @@ export async function analyzeRepo(
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-pro",
+        model: "gemini-2.5-flash",
         systemInstruction: SYSTEM_INSTRUCTION,
     });
 
@@ -114,7 +159,7 @@ export async function analyzeRepo(
                 role: "user",
                 parts: [
                     {
-                        text: `Analyze the following codebase for security vulnerabilities:\n\n${prompt}`,
+                        text: `Analyze this codebase for security vulnerabilities. Reference exact line numbers.\n\n${prompt}`,
                     },
                 ],
             },
@@ -130,23 +175,22 @@ export async function analyzeRepo(
     try {
         const parsed: AnalysisResult = JSON.parse(responseText);
 
-        // Validate shape
         if (typeof parsed.score !== "number" || !Array.isArray(parsed.findings)) {
             throw new Error("Invalid response shape from Gemini");
         }
 
-        // Ensure score is in range
         parsed.score = Math.max(0, Math.min(100, Math.round(parsed.score)));
 
-        // Ensure each finding has required fields
         parsed.findings = parsed.findings.map((f, i) => ({
             id: f.id || `finding-${i + 1}`,
             severity: f.severity || "medium",
             file: f.file || "unknown",
-            line: f.line ?? null,
+            line: f.line || 1,
+            endLine: f.endLine || f.line || 1,
+            action: f.action || "replace",
             title: f.title || "Untitled finding",
             description: f.description || "",
-            fix: f.fix || "",
+            fix: f.fix ?? "",
         }));
 
         return parsed;

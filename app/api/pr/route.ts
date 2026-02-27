@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Octokit } from "@octokit/rest";
 import { auth } from "@/auth";
-import { supabase } from "@/lib/supabase";
+import { getSupabase } from "@/lib/supabase";
 import { createFixPR } from "@/lib/createPR";
 import type { AnalysisRow } from "@/lib/supabase";
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         }
 
         // Fetch the analysis from Supabase
-        const { data, error: fetchError } = await supabase
+        const { data, error: fetchError } = await getSupabase()
             .from("analyses")
             .select("*")
             .eq("id", body.analysisId)
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
         );
 
         // Update the analysis with PR info
-        const { error: updateError } = await supabase
+        const { error: updateError } = await getSupabase()
             .from("analyses")
             .update({
                 pr_url: prResult.pr_url,
