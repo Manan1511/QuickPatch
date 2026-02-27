@@ -5,7 +5,7 @@ import Providers from "./components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "QuickPatch — Automated Security for Vibe-Coded Apps",
+  title: "QuickPatch | Automated Security for Vibe-Coded Apps",
   description:
     "QuickPatch scans your AI-generated repositories and opens a Pull Request with every security fix — automatically.",
   keywords: [
