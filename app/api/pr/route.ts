@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { Octokit } from "@octokit/rest";
 import { auth } from "@/auth";
 import { supabase } from "@/lib/supabase";
 import { createFixPR } from "@/lib/createPR";
+import type { AnalysisRow } from "@/lib/supabase";
 
 interface PRRequest {
     owner: string;
@@ -30,22 +32,23 @@ export async function POST(request: Request) {
         }
 
         // Fetch the analysis from Supabase
-        const { data: analysis, error: fetchError } = await supabase
+        const { data, error: fetchError } = await supabase
             .from("analyses")
             .select("*")
             .eq("id", body.analysisId)
             .eq("user_id", session.user.id)
             .single();
 
-        if (fetchError || !analysis) {
+        if (fetchError || !data) {
             return NextResponse.json(
                 { error: "Analysis not found" },
                 { status: 404 }
             );
         }
 
+        const analysis = data as unknown as AnalysisRow;
+
         // Get default branch from GitHub
-        const { Octokit } = await import("@octokit/rest");
         const octokit = new Octokit({ auth: session.accessToken });
         const { data: repoData } = await octokit.repos.get({
             owner: body.owner,

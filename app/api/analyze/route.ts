@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { analyzeRepo } from "@/lib/analyzer";
 import { supabase } from "@/lib/supabase";
+import type { AnalysisRow } from "@/lib/supabase";
 
 interface AnalyzeRequest {
     owner: string;
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
         );
 
         // Save to database
-        const { data: savedAnalysis, error: dbError } = await supabase
+        const { data, error: dbError } = await supabase
             .from("analyses")
             .insert({
                 user_id: session.user.id,
@@ -61,9 +62,11 @@ export async function POST(request: Request) {
             .select()
             .single();
 
-        if (dbError) {
-            throw new Error(`Database error: ${dbError.message}`);
+        if (dbError || !data) {
+            throw new Error(`Database error: ${dbError?.message ?? "No data returned"}`);
         }
+
+        const savedAnalysis = data as unknown as AnalysisRow;
 
         return NextResponse.json({
             id: savedAnalysis.id,

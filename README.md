@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QuickPatch ⚡
 
-## Getting Started
+**AI-Powered Security Analysis & Automated Patching for Vibe-Coded Apps.**
 
-First, run the development server:
+QuickPatch scans your AI-generated (or any) GitHub repositories, identifies security vulnerabilities using Google Gemini, and automatically generates Pull Requests with the fixes.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Features
+
+- **Automated Security Scanning**: Seamlessly audit your code for vulnerabilities.
+- **AI-Driven Finding Analysis**: Uses Google Gemini to score and categorize security issues.
+- **One-Click Patching**: Generate Pull Requests with corrected code automatically.
+- **Repository Dashboard**: Track security scores across all your connected repositories.
+- **Persistent Reports**: View history and insights for every analysis performed.
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Next.js 15+](https://nextjs.org) (App Router)
+- **Styling**: Vanilla CSS (Vercel-inspired minimalism)
+- **AI**: [Google Generative AI (Gemini)](https://ai.google.dev/)
+- **Database**: [Supabase](https://supabase.com/)
+- **Authentication**: [NextAuth.js v5](https://authjs.dev/)
+- **Typography**: [Geist Sans & Mono](https://vercel.com/font)
+
+## 📦 Getting Started
+
+### 1. Prerequisites
+
+- A GitHub OAuth App (for authentication and repo access).
+- A Supabase project.
+- A Google Gemini API Key.
+
+### 2. Environment Variables
+
+Create a `.env.local` file in the root directory and add the following:
+
+```env
+# NextAuth
+NEXTAUTH_SECRET=your-secret
+NEXTAUTH_URL=http://localhost:3000
+
+# GitHub OAuth
+GITHUB_CLIENT_ID=your-github-id
+GITHUB_CLIENT_SECRET=your-github-secret
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-key
+
+# Google Gemini
+GEMINI_API_KEY=your-gemini-key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Installation & Development
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# Install dependencies
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Run the development server
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000) to start using QuickPatch.
 
-To learn more about Next.js, take a look at the following resources:
+## 📄 License
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is licensed under the MIT License.

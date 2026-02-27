@@ -31,26 +31,6 @@ export interface AnalysisRow {
     created_at: string;
 }
 
-export interface Database {
-    public: {
-        Tables: {
-            users: {
-                Row: DbUser;
-                Insert: Omit<DbUser, "id" | "created_at">;
-                Update: Partial<Omit<DbUser, "id">>;
-            };
-            analyses: {
-                Row: AnalysisRow;
-                Insert: Omit<AnalysisRow, "id" | "created_at" | "pr_url" | "pr_number"> & {
-                    pr_url?: string | null;
-                    pr_number?: number | null;
-                };
-                Update: Partial<Omit<AnalysisRow, "id">>;
-            };
-        };
-    };
-}
-
 /* ===== Supabase Client ===== */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -62,13 +42,9 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     );
 }
 
-export const supabase = createClient<Database>(
-    SUPABASE_URL,
-    SUPABASE_SERVICE_ROLE_KEY,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false,
-        },
-    }
-);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+    },
+});

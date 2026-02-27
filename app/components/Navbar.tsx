@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useSession, signIn, signOut } from "next-auth/react";
 import Link from "next/link";
 import styles from "./Navbar.module.css";
 
@@ -45,16 +45,13 @@ const HAMBURGER_ICON = (
 
 interface NavbarProps {
     variant?: "landing" | "app";
-    username?: string;
-    avatarUrl?: string;
 }
 
-export default function Navbar({
-    variant = "landing",
-    username,
-    avatarUrl,
-}: NavbarProps) {
-    const pathname = usePathname();
+export default function Navbar({ variant = "landing" }: NavbarProps) {
+    const { data: session } = useSession();
+
+    const username = session?.user?.name ?? "user";
+    const avatarUrl = session?.user?.image ?? undefined;
 
     return (
         <nav className={styles.navbar} role="navigation" aria-label="Main navigation">
@@ -66,13 +63,35 @@ export default function Navbar({
 
                 {variant === "landing" ? (
                     <div className={styles.actions}>
-                        <Link href="/connect" className="btn btn-ghost">
-                            {GITHUB_ICON}
-                            <span>Sign in with GitHub</span>
-                        </Link>
-                        <Link href="/connect" className="btn btn-primary">
-                            Get Started
-                        </Link>
+                        {session ? (
+                            <>
+                                <Link href="/dashboard" className="btn btn-ghost">
+                                    Dashboard
+                                </Link>
+                                <button
+                                    onClick={() => signOut({ callbackUrl: "/" })}
+                                    className="btn btn-ghost"
+                                >
+                                    Sign out
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+                                    className="btn btn-ghost"
+                                >
+                                    {GITHUB_ICON}
+                                    <span>Sign in with GitHub</span>
+                                </button>
+                                <button
+                                    onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+                                    className="btn btn-primary"
+                                >
+                                    Get Started
+                                </button>
+                            </>
+                        )}
                     </div>
                 ) : (
                     <div className={styles.actions}>
@@ -86,11 +105,14 @@ export default function Navbar({
                             >
                                 {!avatarUrl && (username?.[0]?.toUpperCase() ?? "U")}
                             </div>
-                            <span className={styles.username}>{username ?? "user"}</span>
+                            <span className={styles.username}>{username}</span>
                         </div>
-                        <Link href="/" className="btn btn-ghost">
+                        <button
+                            onClick={() => signOut({ callbackUrl: "/" })}
+                            className="btn btn-ghost"
+                        >
                             Sign out
-                        </Link>
+                        </button>
                     </div>
                 )}
 
