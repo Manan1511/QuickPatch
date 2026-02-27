@@ -1,0 +1,331 @@
+/* ===== Layout ===== */
+.wrapper {
+    min-height: calc(100vh - 64px);
+    padding-bottom: 80px;
+}
+
+.content {
+    padding-top: var(--space-xl);
+    padding-bottom: var(--space-xl);
+}
+
+/* ===== Header ===== */
+.header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.headerLeft {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.breadcrumb {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.breadcrumbLink {
+    transition: var(--transition-fast);
+}
+
+.breadcrumbLink:hover {
+    color: var(--text-primary);
+}
+
+.breadcrumbSep {
+    color: var(--text-muted);
+}
+
+.pageTitle {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--white);
+}
+
+.repoHighlight {
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.meta {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* ===== Score ===== */
+.scoreSection {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xl);
+    padding: var(--space-xl);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.scoreCircle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-shrink: 0;
+}
+
+.scoreArc {
+    transition: stroke-dashoffset 1s ease;
+}
+
+.scoreValue {
+    font-size: 36px;
+    font-weight: 700;
+    font-family: var(--font-sans);
+}
+
+.scoreLabel {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.severityPills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+}
+
+/* ===== Findings ===== */
+.findings {
+    margin-top: var(--space-lg);
+}
+
+.findingsTitle {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: var(--space-md);
+}
+
+.tableHeader {
+    display: grid;
+    grid-template-columns: 100px 180px 1fr 80px;
+    gap: var(--space-md);
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.findingRow {
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.findingMain {
+    display: grid;
+    grid-template-columns: 100px 180px 1fr 80px;
+    gap: var(--space-md);
+    padding: 14px 16px;
+    align-items: center;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.findingMain:hover {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.colSeverity {
+    /* sizing handled by grid */
+}
+
+.colFile {
+    /* sizing handled by grid */
+}
+
+.colIssue {
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.colFix {
+    /* sizing handled by grid */
+}
+
+.filePath {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    word-break: break-all;
+}
+
+.viewFix {
+    font-size: 13px;
+    color: var(--accent-blue);
+    font-weight: 500;
+}
+
+/* ===== Diff Panel ===== */
+.diffPanel {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    margin: 0 16px 16px;
+    overflow: hidden;
+}
+
+.diffHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.copyBtn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    transition: var(--transition-fast);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.copyBtn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.diffContent {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.diffOld {
+    border-right: 1px solid var(--border-subtle);
+}
+
+.diffOld,
+.diffNew {
+    padding: 0;
+}
+
+.diffLabel {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.diffOld .diffLabel {
+    color: var(--error);
+    background: rgba(229, 72, 77, 0.06);
+}
+
+.diffNew .diffLabel {
+    color: var(--success);
+    background: rgba(0, 201, 80, 0.06);
+}
+
+.diffOld pre {
+    background: rgba(229, 72, 77, 0.04);
+    color: var(--text-secondary);
+}
+
+.diffNew pre {
+    background: rgba(0, 201, 80, 0.04);
+    color: var(--text-primary);
+}
+
+.diffOld pre,
+.diffNew pre {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 16px;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+}
+
+/* ===== Sticky CTA Bar ===== */
+.stickyBar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-subtle);
+    padding: 14px 0;
+    z-index: 50;
+    backdrop-filter: blur(12px);
+}
+
+.stickyBarInner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stickyText {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+    }
+
+    .scoreSection {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .tableHeader {
+        display: none;
+    }
+
+    .findingMain {
+        grid-template-columns: 1fr;
+        gap: var(--space-sm);
+    }
+
+    .diffContent {
+        grid-template-columns: 1fr;
+    }
+
+    .diffOld {
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .stickyBarInner {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+}

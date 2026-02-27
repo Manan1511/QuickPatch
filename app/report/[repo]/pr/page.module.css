@@ -1,0 +1,220 @@
+.wrapper {
+    min-height: calc(100vh - 64px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-xl) var(--space-lg);
+}
+
+.content {
+    max-width: 560px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: var(--space-lg);
+}
+
+/* ===== Success Icon ===== */
+.successIcon {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.successGlow {
+    position: absolute;
+    inset: -20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0, 201, 80, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.checkCircle {
+    animation: circle-draw 0.6s ease forwards;
+    stroke-dasharray: 201;
+    stroke-dashoffset: 201;
+}
+
+.checkPath {
+    animation: check-draw 0.4s 0.5s ease forwards;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+}
+
+@keyframes circle-draw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes check-draw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+/* ===== Text ===== */
+.heading {
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--white);
+}
+
+.body {
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.body strong {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* ===== PR Card ===== */
+.prCard {
+    width: 100%;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.prTitle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--white);
+}
+
+.prBranch {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 13px;
+}
+
+.prBranch code {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.arrow {
+    color: var(--text-muted);
+}
+
+.prStats {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.filesChanged {
+    color: var(--text-secondary);
+}
+
+.additions {
+    color: var(--success);
+    font-family: var(--font-mono);
+    font-weight: 500;
+}
+
+.deletions {
+    color: var(--error);
+    font-family: var(--font-mono);
+    font-weight: 500;
+}
+
+.prLabels {
+    display: flex;
+    gap: var(--space-sm);
+}
+
+/* ===== Actions ===== */
+.actions {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+}
+
+/* ===== Fixes Section ===== */
+.fixesSection {
+    width: 100%;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    text-align: left;
+}
+
+.fixesToggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px var(--space-lg);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    cursor: pointer;
+    border: none;
+    transition: var(--transition-fast);
+}
+
+.fixesToggle:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.fixesTitle {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.chevron {
+    transition: transform 0.2s ease;
+    display: flex;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+.fixesList {
+    display: flex;
+    flex-direction: column;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.fixItem {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px var(--space-lg);
+    font-size: 14px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.fixItem:last-child {
+    border-bottom: none;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+    .actions {
+        flex-direction: column;
+    }
+
+    .content {
+        gap: var(--space-md);
+    }
+}

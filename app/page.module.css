@@ -1,0 +1,218 @@
+/* ===== Hero ===== */
+.hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-4xl) var(--space-lg) var(--space-3xl);
+  overflow: hidden;
+}
+
+.heroGlow {
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+      rgba(0, 112, 243, 0.08) 0%,
+      transparent 70%);
+  pointer-events: none;
+}
+
+.heroContent {
+  position: relative;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  max-width: 560px;
+}
+
+.ctaRow {
+  display: flex;
+  gap: 12px;
+  margin-top: var(--space-sm);
+}
+
+.trustLine {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: var(--space-xs);
+}
+
+/* ===== Social Proof ===== */
+.socialProof {
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-xl) 0;
+}
+
+.socialProofInner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.socialProofLabel {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+.statPills {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.statPill {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 6px 16px;
+}
+
+/* ===== Features ===== */
+.sectionTitle {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+}
+
+.featureCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.featureIcon {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 112, 243, 0.08);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(0, 112, 243, 0.15);
+}
+
+.featureTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.featureBody {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ===== How It Works ===== */
+.howItWorks {
+  padding-bottom: var(--space-4xl);
+}
+
+.stepsRow {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  position: relative;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  position: relative;
+  flex: 0 0 180px;
+}
+
+.stepNum {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-blue);
+}
+
+.stepLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.stepConnector {
+  position: absolute;
+  top: 18px;
+  left: calc(50% + 32px);
+  width: calc(100% - 64px);
+  height: 0;
+  border-top: 2px dashed var(--border-subtle);
+  transform: translateX(50%);
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .hero {
+    padding: var(--space-3xl) var(--space-md) var(--space-2xl);
+  }
+
+  .subtitle {
+    font-size: 16px;
+  }
+
+  .ctaRow {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .stepsRow {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xl);
+  }
+
+  .stepConnector {
+    display: none;
+  }
+
+  .statPills {
+    flex-direction: column;
+    align-items: center;
+  }
+}
